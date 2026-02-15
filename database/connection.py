@@ -22,6 +22,11 @@ def get_database_url() -> str:
     """Get database URL with proper format for asyncpg."""
     database_url = os.getenv("DATABASE_URL")
     
+    # Force SQLite for now due to Railway PostgreSQL SSL issues
+    if database_url and "railway.app" in database_url:
+        logger.warning("Using SQLite instead of Railway PostgreSQL due to SSL issues")
+        return "sqlite+aiosqlite:///./edusync.db"
+    
     if not database_url:
         logger.warning("DATABASE_URL not set, using SQLite fallback")
         return "sqlite+aiosqlite:///./edusync.db"
@@ -29,12 +34,6 @@ def get_database_url() -> str:
     # Convert postgres:// to postgresql+asyncpg://
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
-    
-    # Add sslmode=require for Railway
-    if "railway.app" in database_url and "sslmode" not in database_url:
-        separator = "&" if "?" in database_url else "?"
-        database_url += f"{separator}sslmode=require"
-        logger.info("Added sslmode=require to URL")
     
     logger.info(f"Database host: {database_url.split('@')[1].split(':')[0] if '@' in database_url else 'unknown'}")
     return database_url
@@ -46,24 +45,12 @@ def get_engine():
     if _engine is None:
         url = get_database_url()
         
-        # For Railway PostgreSQL - SSL is required
-        connect_args = {}
-        if "railway.app" in url:
-            import ssl as ssl_module
-            # Create SSL context that accepts the server's certificate
-            ssl_context = ssl_module.create_default_context()
-            ssl_context.check_hostname = False
-            ssl_context.verify_mode = ssl_module.CERT_NONE
-            connect_args["ssl"] = ssl_context
-            logger.info("SSL context configured for Railway")
-        
         _engine = create_async_engine(
             url,
             echo=os.getenv("SQL_ECHO", "false").lower() == "true",
             pool_size=5,
             max_overflow=10,
             pool_pre_ping=True,
-            connect_args=connect_args,
         )
     return _engine
 
