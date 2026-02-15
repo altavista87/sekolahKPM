@@ -20,8 +20,7 @@ app_started = False
 try:
     from fastapi import FastAPI, Request
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import JSONResponse, FileResponse
-    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
     logger.info("✅ FastAPI imported")
 except ImportError as e:
     logger.error(f"❌ Failed to import FastAPI: {e}")
@@ -179,63 +178,57 @@ except Exception as e:
 
 
 # ==========================================
-# STATIC FILES (Mount AFTER API routes)
+# STATIC FILES - Serve frontend
 # ==========================================
 
-# Get the static directory path
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 
-if os.path.exists(STATIC_DIR):
-    logger.info(f"✅ Serving static files from: {STATIC_DIR}")
-    
-    # Mount static files at root
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-    
-    @app.get("/")
-    async def serve_index():
-        """Serve index.html at root."""
-        index_path = os.path.join(STATIC_DIR, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        return {"message": "EduSync API - Static files not found"}
-    
-    @app.get("/{path:path}")
-    async def serve_spa(path: str):
-        """SPA fallback - serve index.html for all non-API routes."""
-        # Don't intercept API routes
-        if path.startswith(("api/", "webhook/", "health", "ready", "metrics")):
-            return JSONResponse(
-                status_code=404,
-                content={"detail": "Not found"}
-            )
-        
-        # Check if file exists in static directory
-        file_path = os.path.join(STATIC_DIR, path)
-        if os.path.exists(file_path) and os.path.isfile(file_path):
-            return FileResponse(file_path)
-        
-        # Fallback to index.html for client-side routing
-        index_path = os.path.join(STATIC_DIR, "index.html")
-        if os.path.exists(index_path):
-            return FileResponse(index_path)
-        
-        return JSONResponse(
-            status_code=404,
-            content={"detail": "Not found"}
-        )
-else:
-    logger.warning(f"⚠️ Static directory not found: {STATIC_DIR}")
-    
-    @app.get("/")
-    async def root_no_static():
-        """Root when no static files."""
-        return {
-            "message": "EduSync API",
-            "version": "1.0.0",
-            "status": "API only mode - no frontend",
-            "health": "/health",
-            "api": "/api"
-        }
+@app.get("/", response_class=HTMLResponse)
+async def serve_index():
+    """Serve index.html at root."""
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r") as f:
+            return f.read()
+    return "<h1>EduSync API</h1><p>Frontend not found. API is running at /api</p>"
 
 
-logger.info("✅ FastAPI app configured with static files")
+@app.get("/test-ui", response_class=HTMLResponse)
+async def serve_test_ui():
+    """Serve test UI."""
+    test_ui_path = os.path.join(STATIC_DIR, "test-ui.html")
+    if os.path.exists(test_ui_path):
+        with open(test_ui_path, "r") as f:
+            return f.read()
+    return "<h1>Test UI not found</h1>"
+
+
+@app.get("/{filename}")
+async def serve_static_file(filename: str):
+    """Serve static files (JS, CSS, etc)."""
+    # Skip API paths
+    if filename.startswith(("api", "webhook", "health", "ready", "metrics")):
+        return JSONResponse(status_code=404, content={"detail": "Not found"})
+    
+    file_path = os.path.join(STATIC_DIR, filename)
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        content_type = "text/html"
+        if filename.endswith(".js"):
+            content_type = "application/javascript"
+        elif filename.endswith(".css"):
+            content_type = "text/css"
+        
+        with open(file_path, "r") as f:
+            content = f.read()
+        return HTMLResponse(content=content) if filename.endswith(".html") else content
+    
+    # SPA fallback - serve index.html for client-side routing
+    index_path = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_path):
+        with open(index_path, "r") as f:
+            return f.read()
+    
+    return JSONResponse(status_code=404, content={"detail": "Not found"})
+
+
+logger.info(f"✅ FastAPI configured. Static dir: {STATIC_DIR}")
