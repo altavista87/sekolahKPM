@@ -316,3 +316,4 @@ async def serve_test_ui():
 
 
 logger.info("✅ FastAPI app ready")
+# Force rebuild Sun Feb 15 13:45:51 +08 2026
