@@ -1,0 +1,29 @@
+[build]
+  command = "echo 'Build complete'"
+  functions = "netlify/functions"
+  publish = "static"
+
+[build.environment]
+  PYTHON_VERSION = "3.11"
+
+# Redirects
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/webhook/telegram"
+  to = "/.netlify/functions/telegram-webhook"
+  status = 200
+
+[[redirects]]
+  from = "/webhook/whatsapp"
+  to = "/.netlify/functions/whatsapp-webhook"
+  status = 200
+
+# Static files
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
