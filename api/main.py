@@ -69,8 +69,10 @@ async def lifespan(app: FastAPI):
         db_status = "connected" if db_healthy else "disconnected"
         logger.info(f"✅ Database: {db_status}")
     except Exception as e:
-        db_status = f"error: {str(e)[:80]}"
+        import traceback
+        db_status = f"error: {str(e)[:200]}"
         logger.error(f"❌ Database init failed: {e}")
+        logger.error(traceback.format_exc())
     
     # Initialize Telegram bot
     bot_application = await init_telegram_bot()
