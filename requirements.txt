@@ -7,7 +7,8 @@ pydantic-settings>=2.1.0
 
 # Database
 sqlalchemy[asyncio]>=2.0.23
-psycopg2-binary>=2.9.9  # Use psycopg2 for Railway PostgreSQL compatibility
+psycopg2-binary>=2.9.9  # Primary driver for Railway PostgreSQL
+asyncpg>=0.29.0  # Keep for compatibility with async imports
 aiosqlite>=0.19.0  # SQLite support for fallback
 alembic>=1.12.1
 
