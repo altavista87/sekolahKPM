@@ -111,3 +111,12 @@ async def check_db_connection() -> bool:
     except Exception as e:
         logger.error(f"❌ Database connection check failed: {e}")
         return False
+
+
+async def close_db() -> None:
+    """Close database connections."""
+    global _engine
+    if _engine:
+        await _engine.dispose()
+        _engine = None
+        logger.info("Database connections closed")

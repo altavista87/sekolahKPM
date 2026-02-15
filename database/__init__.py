@@ -13,8 +13,8 @@ from database.models import (
     AuditLog,
 )
 from database.connection import (
-    engine,
-    AsyncSessionLocal,
+    get_engine,
+    get_session_maker,
     get_db,
     get_db_context,
     init_db,
@@ -36,8 +36,8 @@ __all__ = [
     "OCRResult",
     "MessageLog",
     "AuditLog",
-    "engine",
-    "AsyncSessionLocal",
+    "get_engine",
+    "get_session_maker",
     "async_session_maker",
     "get_db",
     "get_db_context",
