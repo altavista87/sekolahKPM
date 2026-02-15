@@ -61,11 +61,11 @@ async def lifespan(app: FastAPI):
     
     logger.info("🚀 EduSync API starting up...")
     
-    # Try to initialize database
+    # Try to initialize database (sync version for psycopg2)
     try:
         from database.connection import init_db, check_db_connection
-        await init_db()
-        db_healthy = await check_db_connection()
+        init_db()
+        db_healthy = check_db_connection()
         db_status = "connected" if db_healthy else "disconnected"
         logger.info(f"✅ Database: {db_status}")
     except Exception as e:
