@@ -32,6 +32,14 @@ def get_database_url() -> str:
         logger.warning("DATABASE_URL not set, using SQLite fallback")
         return "sqlite+aiosqlite:///./edusync.db"
     
+    # For Railway PostgreSQL - add sslmode=require before converting
+    if "railway.app" in database_url and "sslmode" not in database_url:
+        # Add SSL parameter
+        if "?" in database_url:
+            database_url += "&sslmode=require"
+        else:
+            database_url += "?sslmode=require"
+    
     # Convert Railway's postgres:// to postgresql+asyncpg://
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
@@ -47,21 +55,12 @@ def get_engine():
     if _engine is None:
         url = get_database_url()
         
-        # SSL configuration for Railway PostgreSQL
-        connect_args = {}
-        if "railway.app" in url:
-            # For Railway, we need to use ssl=true
-            import ssl
-            ssl_context = ssl.create_default_context()
-            connect_args["ssl"] = ssl_context
-        
         _engine = create_async_engine(
             url,
             echo=os.getenv("SQL_ECHO", "false").lower() == "true",
             pool_size=5,
             max_overflow=10,
             pool_pre_ping=True,
-            connect_args=connect_args,
         )
     return _engine
 
