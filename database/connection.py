@@ -38,10 +38,6 @@ def get_database_url() -> str:
     elif database_url.startswith("postgresql://"):
         database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     
-    # Add SSL mode for Railway PostgreSQL
-    if "sslmode" not in database_url and "railway.app" in database_url:
-        database_url += "?sslmode=require"
-    
     return database_url
 
 
@@ -50,10 +46,14 @@ def get_engine():
     global _engine
     if _engine is None:
         url = get_database_url()
+        
         # SSL configuration for Railway PostgreSQL
         connect_args = {}
-        if "railway.app" in url or "sslmode=require" in url:
-            connect_args["ssl"] = "require"
+        if "railway.app" in url:
+            # For Railway, we need to use ssl=true
+            import ssl
+            ssl_context = ssl.create_default_context()
+            connect_args["ssl"] = ssl_context
         
         _engine = create_async_engine(
             url,
