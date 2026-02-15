@@ -5,13 +5,18 @@ import logging
 from typing import AsyncGenerator, Optional
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
-from sqlalchemy.orm import declarative_base
 from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
-# Base class for models
-Base = declarative_base()
+# Import Base from models (avoid circular import by doing it lazily)
+Base = None
+def get_base():
+    global Base
+    if Base is None:
+        from database.models import Base as ModelsBase
+        Base = ModelsBase
+    return Base
 
 # Global engine (initialized lazily)
 _engine = None
@@ -72,6 +77,7 @@ async def init_db() -> None:
             # Import models to ensure they're registered
             try:
                 from database.models import User, Student, Homework, Reminder, Class
+                Base = get_base()
                 await conn.run_sync(Base.metadata.create_all)
                 logger.info("✅ Database initialized successfully")
             except ImportError as e:
