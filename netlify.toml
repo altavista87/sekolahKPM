@@ -6,24 +6,56 @@
 [build.environment]
   PYTHON_VERSION = "3.11"
 
-# Redirects
+# IMPORTANT: Redirects are processed in order from top to bottom
+# More specific paths should come BEFORE the catch-all /*
+
+# API endpoints - MUST come before static catch-all
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+  force = true
 
+# Webhook endpoints - MUST come before static catch-all
 [[redirects]]
   from = "/webhook/telegram"
   to = "/.netlify/functions/telegram-webhook"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/webhook/whatsapp"
   to = "/.netlify/functions/whatsapp-webhook"
   status = 200
+  force = true
 
-# Static files
+# Direct function access - force function handling
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+  force = true
+  conditions = {Role = ["admin"]}
+
+# Static files - catch-all should be LAST
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+  conditions = {Path = ["!/.netlify/functions/*", "!/*.json", "!/*.py"]}
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
