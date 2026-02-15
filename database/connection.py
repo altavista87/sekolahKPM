@@ -46,12 +46,19 @@ def get_engine():
     if _engine is None:
         url = get_database_url()
         
+        # For Railway PostgreSQL - SSL is required
+        connect_args = {}
+        if "railway.app" in url:
+            connect_args["ssl"] = True  # asyncpg uses ssl=True
+            logger.info("SSL enabled for Railway")
+        
         _engine = create_async_engine(
             url,
             echo=os.getenv("SQL_ECHO", "false").lower() == "true",
             pool_size=5,
             max_overflow=10,
             pool_pre_ping=True,
+            connect_args=connect_args,
         )
     return _engine
 
