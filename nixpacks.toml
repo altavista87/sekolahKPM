@@ -1,7 +1,7 @@
 # Nixpacks configuration for Railway deployment
 [phases.build]
 cmds = [
-    "pip install -r requirements.txt",
+    "pip install --no-cache-dir -r requirements.txt",
 ]
 
 [phases.setup]
@@ -10,7 +10,6 @@ nixPkgs = [
     "gcc",
     "libffi",
     "openssl",
-    "postgresql",  # For psycopg2 dependencies
 ]
 
 [start]
