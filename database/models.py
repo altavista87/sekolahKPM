@@ -8,7 +8,7 @@ from sqlalchemy import (
     Column, String, Integer, Boolean, DateTime, Text, ForeignKey,
     ARRAY, DECIMAL, BigInteger, JSON, Float, func, UniqueConstraint
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -177,8 +177,8 @@ class AuditLog(Base):
     table_name = Column(String(100), nullable=False)
     record_id = Column(UUID(as_uuid=True), nullable=False)
     action = Column(String(20), nullable=False)
-    old_data = Column(JSONB)
-    new_data = Column(JSONB)
+    old_data = Column(JSON)  # Using generic JSON for SQLite compatibility
+    new_data = Column(JSON)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
