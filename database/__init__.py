@@ -20,10 +20,7 @@ from database.connection import (
     init_db,
     close_db,
 )
-from database.session import (
-    async_session_maker,
-    get_db as get_db_session,
-)
+# Note: database.session is async and requires asyncpg - not importing here
 
 __all__ = [
     "Base",
@@ -38,10 +35,8 @@ __all__ = [
     "UserConsent",
     "get_engine",
     "get_session_maker",
-    "async_session_maker",
     "get_db",
     "get_db_context",
-    "get_db_session",
     "init_db",
     "close_db",
 ]
