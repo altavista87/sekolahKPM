@@ -10,7 +10,7 @@ from database.models import (
     Reminder,
     OCRResult,
     MessageLog,
-    AuditLog,
+    UserConsent,
 )
 from database.connection import (
     get_engine,
@@ -35,7 +35,7 @@ __all__ = [
     "Reminder",
     "OCRResult",
     "MessageLog",
-    "AuditLog",
+    "UserConsent",
     "get_engine",
     "get_session_maker",
     "async_session_maker",
