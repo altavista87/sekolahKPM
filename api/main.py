@@ -1,11 +1,11 @@
-"""EduSync API main application for Railway deployment (with static files)."""
+"""EduSync API main application for Railway deployment."""
 
 import os
 import sys
 import logging
 from contextlib import asynccontextmanager
 
-# Setup logging first
+# Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -20,7 +20,7 @@ app_started = False
 try:
     from fastapi import FastAPI, Request
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import JSONResponse, FileResponse, HTMLResponse
+    from fastapi.responses import JSONResponse, HTMLResponse
     logger.info("✅ FastAPI imported")
 except ImportError as e:
     logger.error(f"❌ Failed to import FastAPI: {e}")
@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):
         db_status = "connected" if db_healthy else "disconnected"
         logger.info(f"✅ Database: {db_status}")
     except Exception as e:
-        db_status = f"error: {str(e)[:50]}"
+        db_status = f"error: {str(e)[:80]}"
         logger.error(f"❌ Database init failed: {e}")
     
     app_started = True
@@ -61,7 +61,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS - allow all for now
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -72,27 +72,56 @@ app.add_middleware(
 
 
 # ==========================================
-# API ROUTES (Define BEFORE static files)
+# FIND STATIC DIRECTORY
+# ==========================================
+
+def find_static_dir():
+    """Find static directory in various locations."""
+    possible_paths = [
+        # Railway deployment paths
+        "/app/static",
+        "/workspace/static", 
+        "/static",
+        # Relative paths
+        os.path.join(os.getcwd(), "static"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static"),
+        # Parent of current file
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "static"),
+    ]
+    
+    for path in possible_paths:
+        abs_path = os.path.abspath(path)
+        if os.path.exists(abs_path) and os.path.isdir(abs_path):
+            logger.info(f"✅ Found static directory: {abs_path}")
+            return abs_path
+    
+    logger.warning("⚠️ Static directory not found")
+    return None
+
+
+STATIC_DIR = find_static_dir()
+
+
+# ==========================================
+# API ROUTES
 # ==========================================
 
 @app.get("/health")
 async def health_check():
-    """Health check - must return 200 for Railway."""
+    """Health check."""
     return {
         "status": "healthy",
         "version": "1.0.0",
         "database": db_status,
-        "started": app_started
+        "started": app_started,
+        "static_dir": STATIC_DIR
     }
 
 
 @app.get("/ready")
 async def readiness_check():
     """Readiness check."""
-    return {
-        "ready": app_started,
-        "database": db_status
-    }
+    return {"ready": app_started, "database": db_status}
 
 
 @app.get("/api")
@@ -101,134 +130,91 @@ async def api_root():
     return {
         "message": "EduSync API",
         "version": "1.0.0",
-        "endpoints": {
-            "health": "/health",
-            "homework": "/api/v1/homework",
-            "telegram_webhook": "/webhook/telegram"
-        }
+        "endpoints": ["/health", "/api/v1/homework", "/webhook/telegram"]
     }
 
 
-# Telegram webhook
 @app.post("/webhook/telegram")
 async def telegram_webhook(update: dict):
-    """Telegram webhook endpoint."""
+    """Telegram webhook."""
     logger.info(f"Telegram update: {update.get('update_id')}")
     return {"ok": True}
 
 
-# API v1 routes
 @app.get("/api/v1/homework")
 async def list_homework():
     """List homework."""
-    if db_status == "connected":
-        try:
-            from database.connection import get_db_context
-            from database.models import Homework
-            from sqlalchemy import select
-            
-            async with get_db_context() as session:
-                result = await session.execute(select(Homework))
-                homework = result.scalars().all()
-                return {
-                    "homework": [{"id": h.id, "subject": h.subject, "title": h.title} for h in homework]
-                }
-        except Exception as e:
-            logger.error(f"DB query failed: {e}")
-    
-    # Fallback mock data
     return {
         "homework": [
             {"id": "1", "subject": "Mathematics", "title": "Algebra Exercise", "status": "pending"},
             {"id": "2", "subject": "Science", "title": "Biology Worksheet", "status": "pending"},
-            {"id": "3", "subject": "Bahasa Melayu", "title": "Karangan", "status": "completed"}
         ],
-        "note": f"Database: {db_status}"
+        "database": db_status
     }
 
 
 @app.post("/api/v1/homework")
 async def create_homework(data: dict):
     """Create homework."""
-    logger.info(f"Creating homework: {data}")
-    return {"id": f"hw-{os.urandom(4).hex()}", "created": True, "data": data}
-
-
-@app.get("/api/v1/users/{user_id}")
-async def get_user(user_id: str):
-    """Get user by ID."""
-    return {
-        "id": user_id,
-        "name": "Parent User",
-        "role": "parent",
-        "children": [
-            {"id": "c1", "name": "Ahmad", "class": "5A"},
-            {"id": "c2", "name": "Aisyah", "class": "3B"}
-        ]
-    }
-
-
-# Try to add more routes from routes module
-try:
-    from api.routes import api_router
-    app.include_router(api_router, prefix="/api/v1")
-    logger.info("✅ API routes loaded from routes module")
-except Exception as e:
-    logger.warning(f"⚠️ Could not load routes module: {e}")
+    return {"id": f"hw-{os.urandom(4).hex()}", "created": True}
 
 
 # ==========================================
-# STATIC FILES - Serve frontend
+# STATIC FILES & FRONTEND
 # ==========================================
-
-STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
-    """Serve index.html at root."""
-    index_path = os.path.join(STATIC_DIR, "index.html")
-    if os.path.exists(index_path):
-        with open(index_path, "r") as f:
-            return f.read()
-    return "<h1>EduSync API</h1><p>Frontend not found. API is running at /api</p>"
+    """Serve main index.html."""
+    if STATIC_DIR:
+        index_path = os.path.join(STATIC_DIR, "index.html")
+        if os.path.exists(index_path):
+            try:
+                with open(index_path, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception as e:
+                logger.error(f"Error reading index.html: {e}")
+    
+    # Fallback HTML
+    return """<!DOCTYPE html>
+    <html>
+    <head><title>EduSync</title></head>
+    <body>
+        <h1>EduSync API</h1>
+        <p>Frontend not found. API is running.</p>
+        <p>Database: """ + db_status + """</p>
+        <ul>
+            <li><a href="/health">Health Check</a></li>
+            <li><a href="/api">API Info</a></li>
+            <li><a href="/api/v1/homework">Homework API</a></li>
+        </ul>
+    </body>
+    </html>"""
 
 
 @app.get("/test-ui", response_class=HTMLResponse)
 async def serve_test_ui():
-    """Serve test UI."""
-    test_ui_path = os.path.join(STATIC_DIR, "test-ui.html")
-    if os.path.exists(test_ui_path):
-        with open(test_ui_path, "r") as f:
-            return f.read()
-    return "<h1>Test UI not found</h1>"
+    """Serve test UI page."""
+    if STATIC_DIR:
+        test_ui_path = os.path.join(STATIC_DIR, "test-ui.html")
+        if os.path.exists(test_ui_path):
+            try:
+                with open(test_ui_path, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception as e:
+                logger.error(f"Error reading test-ui.html: {e}")
+    return "<h1>Test UI not found</h1><a href='/'>Back to home</a>"
 
 
-@app.get("/{filename}")
-async def serve_static_file(filename: str):
-    """Serve static files (JS, CSS, etc)."""
-    # Skip API paths
-    if filename.startswith(("api", "webhook", "health", "ready", "metrics")):
-        return JSONResponse(status_code=404, content={"detail": "Not found"})
-    
-    file_path = os.path.join(STATIC_DIR, filename)
-    if os.path.exists(file_path) and os.path.isfile(file_path):
-        content_type = "text/html"
-        if filename.endswith(".js"):
-            content_type = "application/javascript"
-        elif filename.endswith(".css"):
-            content_type = "text/css"
-        
-        with open(file_path, "r") as f:
-            content = f.read()
-        return HTMLResponse(content=content) if filename.endswith(".html") else content
-    
-    # SPA fallback - serve index.html for client-side routing
-    index_path = os.path.join(STATIC_DIR, "index.html")
-    if os.path.exists(index_path):
-        with open(index_path, "r") as f:
-            return f.read()
-    
-    return JSONResponse(status_code=404, content={"detail": "Not found"})
+@app.get("/js/{filename}")
+async def serve_js(filename: str):
+    """Serve JS files."""
+    if STATIC_DIR:
+        js_path = os.path.join(STATIC_DIR, "js", filename)
+        if os.path.exists(js_path):
+            with open(js_path, "r", encoding="utf-8") as f:
+                return HTMLResponse(content=f.read(), media_type="application/javascript")
+    return JSONResponse(status_code=404, content={"error": "Not found"})
 
 
-logger.info(f"✅ FastAPI configured. Static dir: {STATIC_DIR}")
+logger.info("✅ FastAPI app ready")
