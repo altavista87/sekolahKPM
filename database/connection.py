@@ -49,8 +49,13 @@ def get_engine():
         # For Railway PostgreSQL - SSL is required
         connect_args = {}
         if "railway.app" in url:
-            connect_args["ssl"] = True  # asyncpg uses ssl=True
-            logger.info("SSL enabled for Railway")
+            import ssl as ssl_module
+            # Create SSL context that accepts the server's certificate
+            ssl_context = ssl_module.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl_module.CERT_NONE
+            connect_args["ssl"] = ssl_context
+            logger.info("SSL context configured for Railway")
         
         _engine = create_async_engine(
             url,
