@@ -6,7 +6,7 @@ from typing import Optional, List
 
 from sqlalchemy import (
     Column, String, Integer, Boolean, DateTime, Text, ForeignKey,
-    ARRAY, DECIMAL, BigInteger, JSON, Float, func, UniqueConstraint
+    DECIMAL, BigInteger, func, UniqueConstraint
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, relationship
@@ -25,7 +25,6 @@ class School(Base):
     contact_phone = Column(String(20))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
     classes = relationship("Class", back_populates="school")
 
 
@@ -35,39 +34,31 @@ class Class(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(100), nullable=False)
-    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id"), nullable=True)
-    teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     grade_level = Column(String(20))
-    academic_year = Column(Integer)
+    school_id = Column(UUID(as_uuid=True), ForeignKey("schools.id"))
+    teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    # Relationships
     school = relationship("School", back_populates="classes")
-    teacher = relationship("User", back_populates="classes")
     students = relationship("Student", back_populates="class_")
 
 
 class User(Base):
-    """User model."""
+    """User model (parents and teachers)."""
     __tablename__ = "users"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    telegram_id = Column(BigInteger, unique=True)
-    whatsapp_phone = Column(String(20), unique=True)
-    email = Column(String(255))
+    telegram_id = Column(BigInteger, unique=True, index=True)
+    phone_number = Column(String(20), unique=True)
+    email = Column(String(255), unique=True)
     name = Column(String(255), nullable=False)
-    role = Column(String(20), nullable=False)
-    preferred_language = Column(String(10), default="en")
-    timezone = Column(String(50), default="Asia/Singapore")
-    notification_enabled = Column(Boolean, default=True)
+    role = Column(String(20), default="parent")  # parent, teacher, admin
+    language = Column(String(10), default="en")
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    # Relationships
     students = relationship("Student", back_populates="parent")
-    homework = relationship("Homework", back_populates="teacher")
-    classes = relationship("Class", back_populates="teacher")
+    classes_taught = relationship("Class", back_populates="teacher")
 
 
 class Student(Base):
@@ -76,45 +67,32 @@ class Student(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
-    class_id = Column(UUID(as_uuid=True), ForeignKey("classes.id"), nullable=True)
-    parent_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    school_id = Column(String(100))
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    class_id = Column(UUID(as_uuid=True), ForeignKey("classes.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
     parent = relationship("User", back_populates="students")
     class_ = relationship("Class", back_populates="students")
     homework = relationship("Homework", back_populates="student")
 
 
 class Homework(Base):
-    """Homework model."""
+    """Homework assignment model."""
     __tablename__ = "homework"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    student_id = Column(UUID(as_uuid=True), ForeignKey("students.id", ondelete="CASCADE"))
-    teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    student_id = Column(UUID(as_uuid=True), ForeignKey("students.id"))
     subject = Column(String(100), nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text)
-    raw_text = Column(Text)
     due_date = Column(DateTime(timezone=True))
     status = Column(String(20), default="pending")
-    priority = Column(Integer, default=3)
-    image_urls = Column(ARRAY(Text))
-    file_urls = Column(ARRAY(Text))
-    ai_enhanced = Column(Boolean, default=False)
-    ai_summary = Column(Text)
-    ai_keywords = Column(ARRAY(Text))
+    priority = Column(String(20), default="medium")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     completed_at = Column(DateTime(timezone=True))
     
-    # Relationships
     student = relationship("Student", back_populates="homework")
-    teacher = relationship("User", back_populates="homework")
     reminders = relationship("Reminder", back_populates="homework")
-    ocr_results = relationship("OCRResult", back_populates="homework")
 
 
 class Reminder(Base):
@@ -122,15 +100,11 @@ class Reminder(Base):
     __tablename__ = "reminders"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    homework_id = Column(UUID(as_uuid=True), ForeignKey("homework.id", ondelete="CASCADE"))
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    homework_id = Column(UUID(as_uuid=True), ForeignKey("homework.id"))
     reminder_time = Column(DateTime(timezone=True), nullable=False)
-    message = Column(Text)
     sent = Column(Boolean, default=False)
     sent_at = Column(DateTime(timezone=True))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-    # Relationships
     homework = relationship("Homework", back_populates="reminders")
 
 
@@ -139,48 +113,23 @@ class OCRResult(Base):
     __tablename__ = "ocr_results"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    homework_id = Column(UUID(as_uuid=True), ForeignKey("homework.id", ondelete="CASCADE"))
+    homework_id = Column(UUID(as_uuid=True), ForeignKey("homework.id"))
     image_path = Column(String(500))
     extracted_text = Column(Text)
-    confidence = Column(Float)
-    language = Column(String(20))
-    engine = Column(String(50))
-    processing_time_ms = Column(Integer)
+    confidence_score = Column(DECIMAL(5, 4))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
-    # Relationships
-    homework = relationship("Homework", back_populates="ocr_results")
 
 
 class MessageLog(Base):
-    """Message log model."""
+    """Message delivery log."""
     __tablename__ = "message_logs"
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
-    channel = Column(String(20), nullable=False)
-    message_type = Column(String(50), nullable=False)
-    recipient = Column(String(100), nullable=False)
-    content = Column(Text)
-    status = Column(String(20), default="pending")
-    external_id = Column(String(100))
-    cost_usd = Column(DECIMAL(10, 6))
-    sent_at = Column(DateTime(timezone=True))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-
-class AuditLog(Base):
-    """Audit log model."""
-    __tablename__ = "audit_log"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    table_name = Column(String(100), nullable=False)
-    record_id = Column(UUID(as_uuid=True), nullable=False)
-    action = Column(String(20), nullable=False)
-    old_data = Column(JSON)  # Using generic JSON for SQLite compatibility
-    new_data = Column(JSON)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    message_type = Column(String(50))  # telegram, whatsapp
+    message_content = Column(Text)
+    sent_at = Column(DateTime(timezone=True), server_default=func.now())
+    delivered = Column(Boolean, default=False)
 
 
 class UserConsent(Base):
@@ -189,10 +138,10 @@ class UserConsent(Base):
     
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    consent_type = Column(String(50), nullable=False)  # ai_processing, data_storage, etc.
+    consent_type = Column(String(50), nullable=False)
     granted = Column(Boolean, default=False)
     granted_at = Column(DateTime(timezone=True))
-    ip_address = Column(String(45))  # IPv6 compatible
+    ip_address = Column(String(45))
     user_agent = Column(Text)
     
     __table_args__ = (UniqueConstraint('user_id', 'consent_type'),)
