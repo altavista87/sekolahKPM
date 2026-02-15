@@ -1,0 +1,17 @@
+# Nixpacks configuration for Railway deployment
+[phases.build]
+cmds = [
+    "pip install -r requirements.txt",
+]
+
+[phases.setup]
+nixPkgs = [
+    "python311",
+    "gcc",
+    "libffi",
+    "openssl",
+    "postgresql",  # For psycopg2 dependencies
+]
+
+[start]
+cmd = "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8000}"
