@@ -29,17 +29,24 @@ def get_database_url() -> str:
         logger.warning("DATABASE_URL not set, using SQLite fallback")
         return "sqlite:///./edusync.db"
     
+    logger.info(f"Original URL starts with: {database_url[:20]}...")
+    
     # For Railway PostgreSQL with psycopg2
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
+        logger.info("Converted postgres:// to postgresql://")
     
     # Add sslmode=require for Railway
-    if "railway.app" in database_url and "sslmode" not in database_url:
-        separator = "&" if "?" in database_url else "?"
-        database_url += f"{separator}sslmode=require"
-        logger.info("Added sslmode=require for Railway")
+    if "railway.app" in database_url:
+        if "sslmode" not in database_url:
+            separator = "&" if "?" in database_url else "?"
+            database_url += f"{separator}sslmode=require"
+            logger.info(f"Added sslmode=require. New URL ends with: ...{database_url[-30:]}")
+        else:
+            logger.info("URL already has sslmode")
+    else:
+        logger.info(f"Not Railway DB: {database_url[:30]}...")
     
-    logger.info(f"Database configured for: {database_url.split('@')[1].split(':')[0] if '@' in database_url else 'unknown'}")
     return database_url
 
 
