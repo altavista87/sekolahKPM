@@ -9,18 +9,19 @@ from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
-# Import Base from models (avoid circular import by doing it lazily)
+# Global engine (initialized lazily)
+_engine = None
+_AsyncSessionLocal = None
 Base = None
+
+
 def get_base():
+    """Get or import Base class."""
     global Base
     if Base is None:
         from database.models import Base as ModelsBase
         Base = ModelsBase
     return Base
-
-# Global engine (initialized lazily)
-_engine = None
-_AsyncSessionLocal = None
 
 
 def get_database_url() -> str:
@@ -28,24 +29,15 @@ def get_database_url() -> str:
     database_url = os.getenv("DATABASE_URL")
     
     if not database_url:
-        # Fallback for local development
         logger.warning("DATABASE_URL not set, using SQLite fallback")
         return "sqlite+aiosqlite:///./edusync.db"
     
-    # For Railway PostgreSQL - add sslmode=require before converting
-    if "railway.app" in database_url and "sslmode" not in database_url:
-        # Add SSL parameter
-        if "?" in database_url:
-            database_url += "&sslmode=require"
-        else:
-            database_url += "?sslmode=require"
-    
-    # Convert Railway's postgres:// to postgresql+asyncpg://
+    # Just convert postgres:// to postgresql+asyncpg://
+    # Railway's URL already includes SSL settings
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
-    elif database_url.startswith("postgresql://"):
-        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     
+    logger.info(f"Database URL (masked): {database_url[:30]}...")
     return database_url
 
 
@@ -53,10 +45,8 @@ def get_engine():
     """Get or create engine (lazy initialization)."""
     global _engine
     if _engine is None:
-        url = get_database_url()
-        
         _engine = create_async_engine(
-            url,
+            get_database_url(),
             echo=os.getenv("SQL_ECHO", "false").lower() == "true",
             pool_size=5,
             max_overflow=10,
@@ -84,7 +74,6 @@ async def init_db() -> None:
     try:
         engine = get_engine()
         async with engine.begin() as conn:
-            # Import models to ensure they're registered
             try:
                 from database.models import User, Student, Homework, Reminder, Class
                 Base = get_base()
