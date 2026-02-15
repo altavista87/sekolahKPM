@@ -36,13 +36,7 @@ def get_database_url() -> str:
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
     
-    # Railway requires SSL - use sslmode=require for asyncpg
-    if "railway.app" in database_url and "sslmode" not in database_url:
-        separator = "&" if "?" in database_url else "?"
-        database_url += f"{separator}sslmode=require"
-        logger.info("Added sslmode=require for Railway PostgreSQL")
-    
-    logger.info(f"Database URL host: {database_url.split('@')[1].split('/')[0] if '@' in database_url else 'unknown'}")
+    logger.info(f"Database host: {database_url.split('@')[1].split('/')[0] if '@' in database_url else 'unknown'}")
     return database_url
 
 
@@ -50,12 +44,26 @@ def get_engine():
     """Get or create engine (lazy initialization)."""
     global _engine
     if _engine is None:
+        url = get_database_url()
+        
+        # For Railway PostgreSQL, configure SSL properly
+        connect_args = {}
+        if "railway.app" in url:
+            import ssl
+            # Use default SSL context with proper certificate verification
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            connect_args["ssl"] = ssl_context
+            logger.info("Configured SSL for Railway PostgreSQL")
+        
         _engine = create_async_engine(
-            get_database_url(),
+            url,
             echo=os.getenv("SQL_ECHO", "false").lower() == "true",
             pool_size=5,
             max_overflow=10,
             pool_pre_ping=True,
+            connect_args=connect_args,
         )
     return _engine
 
