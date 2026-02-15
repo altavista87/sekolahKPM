@@ -38,6 +38,10 @@ def get_database_url() -> str:
     elif database_url.startswith("postgresql://"):
         database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
     
+    # Add SSL mode for Railway PostgreSQL
+    if "sslmode" not in database_url and "railway.app" in database_url:
+        database_url += "?sslmode=require"
+    
     return database_url
 
 
