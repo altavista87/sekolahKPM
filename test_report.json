@@ -1,0 +1,206 @@
+{
+  "timestamp": "2026-02-15T11:48:48.872048",
+  "target_url": "https://sekolahkpm.netlify.app",
+  "summary": {
+    "total": 20,
+    "passed": 8,
+    "failed": 12,
+    "success_rate": 0.4,
+    "total_time_ms": 3922.6837158203125
+  },
+  "results": [
+    {
+      "name": "Static Site",
+      "passed": true,
+      "message": "Landing page loads",
+      "duration_ms": 502.46286392211914,
+      "details": {
+        "content_length": 12402
+      },
+      "error": null
+    },
+    {
+      "name": "Health Check",
+      "passed": false,
+      "message": "Expecting value: line 1 column 1 (char 0)",
+      "duration_ms": 22.150754928588867,
+      "details": {},
+      "error": "Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "name": "API Info",
+      "passed": true,
+      "message": "Status: 404",
+      "duration_ms": 238.92807960510254,
+      "details": {},
+      "error": null
+    },
+    {
+      "name": "Homework List",
+      "passed": false,
+      "message": "Expecting value: line 1 column 1 (char 0)",
+      "duration_ms": 247.76506423950195,
+      "details": {},
+      "error": "Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "name": "Homework Create",
+      "passed": false,
+      "message": "Expecting value: line 1 column 1 (char 0)",
+      "duration_ms": 230.47494888305664,
+      "details": {},
+      "error": "Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "name": "Users Endpoint",
+      "passed": false,
+      "message": "Expecting value: line 1 column 1 (char 0)",
+      "duration_ms": 256.1941146850586,
+      "details": {},
+      "error": "Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "name": "Students Endpoint",
+      "passed": false,
+      "message": "Expecting value: line 1 column 1 (char 0)",
+      "duration_ms": 292.12093353271484,
+      "details": {},
+      "error": "Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "name": "Telegram Webhook (GET)",
+      "passed": false,
+      "message": "Expecting value: line 1 column 1 (char 0)",
+      "duration_ms": 230.10921478271484,
+      "details": {},
+      "error": "Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "name": "Telegram Webhook (POST)",
+      "passed": false,
+      "message": "Expecting value: line 1 column 1 (char 0)",
+      "duration_ms": 239.22324180603027,
+      "details": {},
+      "error": "Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "name": "Telegram Webhook (Invalid)",
+      "passed": false,
+      "message": "Status: 404",
+      "duration_ms": 18.728971481323242,
+      "details": {},
+      "error": null
+    },
+    {
+      "name": "CORS Headers",
+      "passed": false,
+      "message": "CORS headers: []",
+      "duration_ms": 228.05500030517578,
+      "details": {
+        "age": "0",
+        "cache-control": "public,max-age=0,must-revalidate",
+        "cache-status": "\"Netlify Edge\"; fwd=method",
+        "content-type": "text/html; charset=utf-8",
+        "date": "Sun, 15 Feb 2026 03:48:47 GMT",
+        "etag": "1771127038-ssl",
+        "server": "Netlify",
+        "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+        "x-nf-request-id": "01KHFPMJH38BQXBG06KHQ6CNHB",
+        "transfer-encoding": "chunked"
+      },
+      "error": null
+    },
+    {
+      "name": "Security Headers",
+      "passed": true,
+      "message": "Security headers present: ['HSTS']",
+      "duration_ms": 52.290916442871094,
+      "details": {
+        "accept-ranges": "bytes",
+        "age": "2",
+        "cache-control": "public,max-age=0,must-revalidate",
+        "cache-status": "\"Netlify Edge\"; hit",
+        "content-encoding": "br",
+        "content-length": "2887",
+        "content-type": "text/html; charset=UTF-8",
+        "date": "Sun, 15 Feb 2026 03:48:47 GMT",
+        "etag": "\"3b7840f5eab7d992e2b7e0a1ffc2cd79-ssl-df\"",
+        "server": "Netlify",
+        "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+        "vary": "Accept-Encoding",
+        "x-nf-request-id": "01KHFPMJS6V8QTZ1W6WYS6J5J5"
+      },
+      "error": null
+    },
+    {
+      "name": "Response Time",
+      "passed": true,
+      "message": "Avg: 19ms, Max: 22ms",
+      "duration_ms": 57.10625648498535,
+      "details": {
+        "times": [
+          16.78013801574707,
+          22.351980209350586,
+          17.942190170288086
+        ]
+      },
+      "error": null
+    },
+    {
+      "name": "JSON Content Type",
+      "passed": false,
+      "message": "Content-Type: text/html; charset=utf-8",
+      "duration_ms": 18.268108367919922,
+      "details": {},
+      "error": null
+    },
+    {
+      "name": "404 Handling",
+      "passed": true,
+      "message": "Status: 404",
+      "duration_ms": 249.9861717224121,
+      "details": {},
+      "error": null
+    },
+    {
+      "name": "Method Not Allowed",
+      "passed": false,
+      "message": "Status: 404",
+      "duration_ms": 254.317045211792,
+      "details": {},
+      "error": null
+    },
+    {
+      "name": "WhatsApp Webhook",
+      "passed": true,
+      "message": "Status: 404",
+      "duration_ms": 235.07189750671387,
+      "details": {},
+      "error": null
+    },
+    {
+      "name": "Scheduled Function",
+      "passed": true,
+      "message": "Status: 200",
+      "duration_ms": 512.3481750488281,
+      "details": {},
+      "error": null
+    },
+    {
+      "name": "API Version",
+      "passed": false,
+      "message": "Expecting value: line 1 column 1 (char 0)",
+      "duration_ms": 18.210172653198242,
+      "details": {},
+      "error": "Expecting value: line 1 column 1 (char 0)"
+    },
+    {
+      "name": "Content Compression",
+      "passed": true,
+      "message": "Encoding: br",
+      "duration_ms": 18.871784210205078,
+      "details": {},
+      "error": null
+    }
+  ]
+}

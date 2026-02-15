@@ -12,7 +12,7 @@ from typing import Dict, Any
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 
-def lambda_handler(event, context):
+def handler(event, context):
     """Health check handler."""
     
     # Basic health check

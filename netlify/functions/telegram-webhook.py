@@ -86,7 +86,7 @@ async def process_update(update_data: Dict[str, Any]):
         return False
 
 
-async def handler(event, context):
+async def async_handler(event, context):
     """
     Netlify function handler for Telegram webhook.
     
@@ -160,6 +160,6 @@ async def handler(event, context):
 
 
 # Netlify function entry point
-def lambda_handler(event, context):
-    """Synchronous wrapper for async handler."""
-    return asyncio.get_event_loop().run_until_complete(handler(event, context))
+def handler(event, context):
+    """Synchronous wrapper for async handler - Netlify entry point."""
+    return asyncio.get_event_loop().run_until_complete(async_handler(event, context))

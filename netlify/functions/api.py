@@ -70,7 +70,7 @@ async def handle_request(event: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def lambda_handler(event, context):
+def handler(event, context):
     """API handler entry point."""
     path = event.get('path', '')
     

@@ -13,7 +13,7 @@ from typing import List, Dict
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 
-def lambda_handler(event, context):
+def handler(event, context):
     """
     Scheduled function to check and send reminders.
     Runs at 8 AM, 1 PM, and 6 PM daily.
