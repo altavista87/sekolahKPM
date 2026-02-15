@@ -130,8 +130,48 @@ async def api_root():
     return {
         "message": "EduSync API",
         "version": "1.0.0",
-        "endpoints": ["/health", "/api/v1/homework", "/webhook/telegram"]
+        "endpoints": ["/health", "/api/v1/homework", "/webhook/telegram", "/api/test/ai"]
     }
+
+
+@app.get("/api/test/ai")
+async def test_ai():
+    """Test if Gemini API key is working."""
+    gemini_key = os.getenv("GEMINI_API_KEY", "")
+    
+    if not gemini_key:
+        return {
+            "status": "error",
+            "message": "GEMINI_API_KEY not set",
+            "configured": False
+        }
+    
+    # Try to use Gemini
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=gemini_key)
+        
+        # List available models
+        models = genai.list_models()
+        model_names = [m.name for m in models if 'generateContent' in m.supported_generation_methods]
+        
+        # Try a simple test
+        model = genai.GenerativeModel('gemini-2.0-flash')
+        response = model.generate_content("Say 'EduSync API is working!'")
+        
+        return {
+            "status": "success",
+            "configured": True,
+            "available_models": model_names[:5],  # First 5 models
+            "test_response": response.text.strip() if response.text else "No response",
+            "message": "Gemini API is working!"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "configured": True,
+            "message": f"Gemini API error: {str(e)[:100]}"
+        }
 
 
 @app.post("/webhook/telegram")
