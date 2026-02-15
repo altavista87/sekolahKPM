@@ -2,16 +2,21 @@
 
 import os
 import logging
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.pool import NullPool
+from sqlalchemy import text
 
 logger = logging.getLogger(__name__)
 
-# Railway provides DATABASE_URL in format: postgres://user:pass@host:port/db
-# We need to convert to asyncpg format: postgresql+asyncpg://user:pass@host:port/db
+# Base class for models
+Base = declarative_base()
+
+# Global engine (initialized lazily)
+_engine = None
+_AsyncSessionLocal = None
+
 
 def get_database_url() -> str:
     """Get database URL with proper format for asyncpg."""
@@ -30,44 +35,56 @@ def get_database_url() -> str:
     
     return database_url
 
-# Create async engine
-engine = create_async_engine(
-    get_database_url(),
-    echo=os.getenv("SQL_ECHO", "false").lower() == "true",
-    pool_size=5,
-    max_overflow=10,
-    pool_pre_ping=True,
-)
 
-# Session factory
-AsyncSessionLocal = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False,
-)
+def get_engine():
+    """Get or create engine (lazy initialization)."""
+    global _engine
+    if _engine is None:
+        _engine = create_async_engine(
+            get_database_url(),
+            echo=os.getenv("SQL_ECHO", "false").lower() == "true",
+            pool_size=5,
+            max_overflow=10,
+            pool_pre_ping=True,
+        )
+    return _engine
 
-# Base class for models
-Base = declarative_base()
+
+def get_session_maker():
+    """Get or create session maker (lazy initialization)."""
+    global _AsyncSessionLocal
+    if _AsyncSessionLocal is None:
+        _AsyncSessionLocal = async_sessionmaker(
+            get_engine(),
+            class_=AsyncSession,
+            expire_on_commit=False,
+            autocommit=False,
+            autoflush=False,
+        )
+    return _AsyncSessionLocal
 
 
 async def init_db() -> None:
     """Initialize database tables."""
     try:
+        engine = get_engine()
         async with engine.begin() as conn:
             # Import models to ensure they're registered
-            from database.models import User, Student, Homework, Reminder, Class
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database initialized successfully")
+            try:
+                from database.models import User, Student, Homework, Reminder, Class
+                await conn.run_sync(Base.metadata.create_all)
+                logger.info("✅ Database initialized successfully")
+            except ImportError as e:
+                logger.warning(f"⚠️ Could not import models: {e}")
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error(f"❌ Failed to initialize database: {e}")
         raise
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Get database session for dependency injection."""
-    async with AsyncSessionLocal() as session:
+    session_maker = get_session_maker()
+    async with session_maker() as session:
         try:
             yield session
             await session.commit()
@@ -80,16 +97,17 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def get_db_context() -> AsyncSession:
     """Get database session as context manager."""
-    return AsyncSessionLocal()
+    session_maker = get_session_maker()
+    return session_maker()
 
 
 async def check_db_connection() -> bool:
     """Check if database connection is working."""
     try:
-        from sqlalchemy import text
+        engine = get_engine()
         async with engine.connect() as conn:
             result = await conn.execute(text("SELECT 1"))
             return result.scalar() == 1
     except Exception as e:
-        logger.error(f"Database connection check failed: {e}")
+        logger.error(f"❌ Database connection check failed: {e}")
         return False

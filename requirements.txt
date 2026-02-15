@@ -8,6 +8,7 @@ pydantic-settings>=2.1.0
 # Database
 sqlalchemy[asyncio]>=2.0.23
 asyncpg>=0.29.0
+aiosqlite>=0.19.0  # SQLite support for fallback
 alembic>=1.12.1
 
 # Redis (for caching/sessions)
@@ -27,7 +28,6 @@ pillow-heif>=0.14.0
 # Security
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
-slowapi>=0.1.9
 
 # AI/ML
 google-generativeai>=0.3.2
@@ -39,10 +39,6 @@ python-dateutil>=2.8.2
 
 # Background tasks
 APScheduler>=3.10.4
-celery>=5.3.4
 
 # Monitoring
 prometheus-client>=0.19.0
-
-# Production
-gunicorn>=21.2.0
