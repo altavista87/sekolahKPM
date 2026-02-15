@@ -133,6 +133,11 @@ def close_db():
 
 
 # Async wrappers for compatibility
+def get_db_context():
+    """Get database session context."""
+    return get_session_maker()()
+
+
 async def init_db_async():
     """Async wrapper for init_db."""
     init_db()
