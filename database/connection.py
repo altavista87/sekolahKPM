@@ -30,7 +30,13 @@ def get_database_url() -> str:
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
     
-    logger.info(f"Database configured for host: {database_url.split('@')[1].split(':')[0] if '@' in database_url else 'unknown'}")
+    # Add sslmode=require for Railway
+    if "railway.app" in database_url and "sslmode" not in database_url:
+        separator = "&" if "?" in database_url else "?"
+        database_url += f"{separator}sslmode=require"
+        logger.info("Added sslmode=require to URL")
+    
+    logger.info(f"Database host: {database_url.split('@')[1].split(':')[0] if '@' in database_url else 'unknown'}")
     return database_url
 
 
@@ -40,20 +46,12 @@ def get_engine():
     if _engine is None:
         url = get_database_url()
         
-        # SSL configuration for Railway PostgreSQL
-        connect_args = {}
-        if "railway.app" in url:
-            # Railway requires SSL
-            connect_args["ssl"] = "require"
-            logger.info("Configured SSL=require for Railway")
-        
         _engine = create_async_engine(
             url,
             echo=os.getenv("SQL_ECHO", "false").lower() == "true",
             pool_size=5,
             max_overflow=10,
             pool_pre_ping=True,
-            connect_args=connect_args,
         )
     return _engine
 
