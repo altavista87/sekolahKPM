@@ -49,12 +49,19 @@ def get_engine():
     """Get or create engine (lazy initialization)."""
     global _engine
     if _engine is None:
+        url = get_database_url()
+        # SSL configuration for Railway PostgreSQL
+        connect_args = {}
+        if "railway.app" in url or "sslmode=require" in url:
+            connect_args["ssl"] = "require"
+        
         _engine = create_async_engine(
-            get_database_url(),
+            url,
             echo=os.getenv("SQL_ECHO", "false").lower() == "true",
             pool_size=5,
             max_overflow=10,
             pool_pre_ping=True,
+            connect_args=connect_args,
         )
     return _engine
 
