@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduSync - UI/UX Test Environment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+        
+        .test-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .test-banner h1 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .test-banner .status {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+        
+        .test-banner .badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            margin-bottom: 1rem;
+            color: #667eea;
+        }
+        
+        /* API Test Panel */
+        .api-test {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .api-endpoint {
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .method {
+            font-weight: bold;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            min-width: 60px;
+            text-align: center;
+        }
+        
+        .method.get { background: #d4edda; color: #155724; }
+        .method.post { background: #fff3cd; color: #856404; }
+        .method.patch { background: #cce5ff; color: #004085; }
+        
+        .endpoint-path {
+            font-family: monospace;
+            font-size: 0.875rem;
+            flex: 1;
+        }
+        
+        .test-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+        
+        .test-btn:hover {
+            background: #5a6fd6;
+        }
+        
+        .response {
+            margin-top: 0.5rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            max-height: 200px;
+            overflow: auto;
+            display: none;
+        }
+        
+        .response.active {
+            display: block;
+        }
+        
+        /* Component Showcase */
+        .component-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .component-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.2s;
+        }
+        
+        .component-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+        
+        .component-card h3 {
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+        }
+        
+        /* Buttons */
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            margin: 0.25rem;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5a6fd6;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        /* Cards */
+        .homework-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-left: 4px solid #667eea;
+        }
+        
+        .homework-card.overdue {
+            border-left-color: #dc3545;
+        }
+        
+        .homework-card.completed {
+            border-left-color: #28a745;
+            opacity: 0.7;
+        }
+        
+        .homework-card .subject {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .homework-card .due-date {
+            font-size: 0.875rem;
+            color: #666;
+        }
+        
+        /* Forms */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        /* Checklist */
+        .checklist {
+            list-style: none;
+        }
+        
+        .checklist li {
+            padding: 0.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .checklist input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+        
+        .checklist label {
+            cursor: pointer;
+        }
+        
+        .checklist input:checked + label {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+        
+        /* Console */
+        .console {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.875rem;
+            max-height: 300px;
+            overflow: auto;
+        }
+        
+        .console .log-info { color: #4fc1ff; }
+        .console .log-success { color: #4ec9b0; }
+        .console .log-error { color: #f48771; }
+        .console .log-warn { color: #dcdcaa; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .api-endpoint {
+                flex-wrap: wrap;
+            }
+            
+            .endpoint-path {
+                width: 100%;
+                margin: 0.5rem 0;
+            }
+        }
+        
+        /* Loading state */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-banner">
+        <h1>🧪 EduSync UI/UX Test Environment</h1>
+        <div class="status">
+            Mode: <strong>Static Local</strong>
+            <span class="badge">Mock API Active</span>
+            <span class="badge">No Backend Required</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- API Testing Section -->
+        <div class="section">
+            <h2>🔌 API Mock Testing</h2>
+            <p>Test API endpoints with mock responses. No server required.</p>
+            <div class="api-test" id="apiTests">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Component Showcase -->
+        <div class="section">
+            <h2>🎨 Component Library</h2>
+            <div class="component-grid">
+                <div class="component-card">
+                    <h3>Buttons</h3>
+                    <button class="btn btn-primary">Primary</button>
+                    <button class="btn btn-secondary">Secondary</button>
+                    <button class="btn btn-success">Success</button>
+                    <button class="btn btn-danger">Danger</button>
+                </div>
+                
+                <div class="component-card">
+                    <h3>Homework Cards</h3>
+                    <div class="homework-card">
+                        <div class="subject">Mathematics</div>
+                        <div>Algebra Exercise</div>
+                        <div class="due-date">Due in 2 days</div>
+                    </div>
+                    <div class="homework-card overdue">
+                        <div class="subject">Science</div>
+                        <div>Biology Worksheet</div>
+                        <div class="due-date">Overdue</div>
+                    </div>
+                </div>
+                
+                <div class="component-card">
+                    <h3>Form Elements</h3>
+                    <div class="form-group">
+                        <label>Student Name</label>
+                        <input type="text" class="form-control" placeholder="Enter name">
+                    </div>
+                    <div class="form-group">
+                        <label>Subject</label>
+                        <select class="form-control">
+                            <option>Mathematics</option>
+                            <option>Science</option>
+                            <option>Bahasa Melayu</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="component-card">
+                    <h3>States</h3>
+                    <p><span class="loading"></span> Loading...</p>
+                    <button class="btn btn-primary" disabled>Disabled Button</button>
+                    <div style="margin-top: 1rem; padding: 1rem; background: #f8f9fa; border-radius: 4px;">
+                        Empty State Placeholder
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Data Display -->
+        <div class="section">
+            <h2>📊 Live Mock Data</h2>
+            <button class="btn btn-primary" onclick="loadHomework()">Load Homework</button>
+            <button class="btn btn-secondary" onclick="loadStats()">Load Stats</button>
+            <button class="btn btn-success" onclick="simulateAdd()">+ Add Homework</button>
+            <div id="dataDisplay" style="margin-top: 1rem;">
+                <p style="color: #666;">Click a button to load data...</p>
+            </div>
+        </div>
+
+        <!-- UI/UX Checklist -->
+        <div class="section">
+            <h2>✅ UI/UX Testing Checklist</h2>
+            <ul class="checklist">
+                <li>
+                    <input type="checkbox" id="chk1">
+                    <label for="chk1">Landing page loads and renders correctly</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="chk2">
+                    <label for="chk2">Responsive design works on mobile (320px-768px)</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="chk3">
+                    <label for="chk3">Responsive design works on tablet (768px-1024px)</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="chk4">
+                    <label for="chk4">Buttons have hover and active states</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="chk5">
+                    <label for="chk5">Form inputs have focus states</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="chk6">
+                    <label for="chk6">Loading states are visible</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="chk7">
+                    <label for="chk7">Error states are styled</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="chk8">
+                    <label for="chk8">Cards have consistent spacing and shadows</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="chk9">
+                    <label for="chk9">Typography is readable and consistent</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="chk10">
+                    <label for="chk10">Color contrast meets accessibility (WCAG AA)</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="chk11">
+                    <label for="chk11">Mock API returns data correctly</label>
+                </li>
+                <li>
+                    <input type="checkbox" id="chk12">
+                    <label for="chk12">Data updates reflect in UI immediately</label>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Browser Console -->
+        <div class="section">
+            <h2>🖥️ Test Console</h2>
+            <div class="console" id="console">
+                <div class="log-info">Test environment initialized...</div>
+                <div class="log-success">Mock API loaded</div>
+            </div>
+            <button class="btn btn-secondary" onclick="clearConsole()" style="margin-top: 0.5rem;">Clear Console</button>
+        </div>
+    </div>
+
+    <script src="js/mock-api.js"></script>
+    <script>
+        // Console logging
+        function log(message, type = 'info') {
+            const console = document.getElementById('console');
+            const div = document.createElement('div');
+            div.className = `log-${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            console.appendChild(div);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '';
+            log('Console cleared', 'info');
+        }
+
+        // API Test Panel
+        const endpoints = [
+            { method: 'GET', path: '/api/health', name: 'Health Check' },
+            { method: 'GET', path: '/api/v1/homework', name: 'List Homework' },
+            { method: 'POST', path: '/api/v1/homework', name: 'Create Homework', body: { subject: 'Test', title: 'New Assignment' } },
+            { method: 'GET', path: '/api/v1/users/1', name: 'Get User' },
+            { method: 'GET', path: '/api/v1/students/1/stats', name: 'Student Stats' },
+        ];
+
+        function renderApiTests() {
+            const container = document.getElementById('apiTests');
+            endpoints.forEach((ep, index) => {
+                const div = document.createElement('div');
+                div.className = 'api-endpoint';
+                div.innerHTML = `
+                    <span class="method ${ep.method.toLowerCase()}">${ep.method}</span>
+                    <code class="endpoint-path">${ep.path}</code>
+                    <span>${ep.name}</span>
+                    <button class="test-btn" onclick="testEndpoint(${index})">Test</button>
+                    <pre class="response" id="response-${index}"></pre>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function testEndpoint(index) {
+            const ep = endpoints[index];
+            const responseEl = document.getElementById(`response-${index}`);
+            responseEl.classList.add('active');
+            responseEl.textContent = 'Loading...';
+            
+            log(`Testing ${ep.method} ${ep.path}`, 'info');
+            
+            try {
+                const options = {
+                    method: ep.method,
+                    headers: { 'Content-Type': 'application/json' }
+                };
+                if (ep.body) {
+                    options.body = JSON.stringify(ep.body);
+                }
+                
+                const response = await fetch(ep.path, options);
+                const data = await response.json();
+                
+                responseEl.textContent = JSON.stringify(data, null, 2);
+                log(`${ep.name}: Success (${response.status})`, 'success');
+            } catch (error) {
+                responseEl.textContent = `Error: ${error.message}`;
+                log(`${ep.name}: Failed - ${error.message}`, 'error');
+            }
+        }
+
+        // Live Data Functions
+        async function loadHomework() {
+            log('Loading homework...', 'info');
+            const display = document.getElementById('dataDisplay');
+            display.innerHTML = '<div class="loading"></div>';
+            
+            try {
+                const response = await fetch('/api/v1/homework');
+                const data = await response.json();
+                
+                display.innerHTML = data.homework.map(hw => `
+                    <div class="homework-card ${hw.status}">
+                        <div class="subject">${hw.subject}</div>
+                        <div><strong>${hw.title}</strong></div>
+                        <div>${hw.description}</div>
+                        <div class="due-date">Due: ${new Date(hw.due_date).toLocaleDateString()}</div>
+                        <div style="margin-top: 0.5rem;">
+                            <span class="badge" style="background: ${hw.priority === 'high' ? '#dc3545' : '#28a745'}; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">${hw.priority}</span>
+                            <span class="badge" style="background: #e0e0e0; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; margin-left: 0.5rem;">${hw.student_name}</span>
+                        </div>
+                    </div>
+                `).join('');
+                
+                log(`Loaded ${data.homework.length} homework items`, 'success');
+            } catch (error) {
+                display.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                log(`Failed to load homework: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadStats() {
+            log('Loading stats...', 'info');
+            const display = document.getElementById('dataDisplay');
+            
+            try {
+                const response = await fetch('/api/v1/students/1/stats');
+                const stats = await response.json();
+                
+                display.innerHTML = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #667eea;">${stats.total_homework}</div>
+                            <div style="color: #666;">Total</div>
+                        </div>
+                        <div style="background: #d4edda; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #28a745;">${stats.completed}</div>
+                            <div style="color: #155724;">Completed</div>
+                        </div>
+                        <div style="background: #fff3cd; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #856404;">${stats.pending}</div>
+                            <div style="color: #856404;">Pending</div>
+                        </div>
+                        <div style="background: #f8d7da; padding: 1rem; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 2rem; font-weight: bold; color: #dc3545;">${stats.overdue}</div>
+                            <div style="color: #721c24;">Overdue</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 1rem; padding: 1rem; background: #e7f3ff; border-radius: 8px;">
+                        <strong>Completion Rate:</strong> ${stats.completion_rate}%
+                        <div style="background: #ddd; height: 20px; border-radius: 10px; margin-top: 0.5rem; overflow: hidden;">
+                            <div style="background: #667eea; height: 100%; width: ${stats.completion_rate}%; transition: width 0.5s;"></div>
+                        </div>
+                    </div>
+                `;
+                
+                log('Stats loaded successfully', 'success');
+            } catch (error) {
+                display.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                log(`Failed to load stats: ${error.message}`, 'error');
+            }
+        }
+
+        async function simulateAdd() {
+            const subjects = ['Mathematics', 'Science', 'English', 'Bahasa Melayu'];
+            const types = ['Worksheet', 'Exercise', 'Project', 'Reading'];
+            
+            const newHomework = {
+                subject: subjects[Math.floor(Math.random() * subjects.length)],
+                title: `${types[Math.floor(Math.random() * types.length)]} - ${Date.now().toString().slice(-4)}`,
+                description: 'Automatically generated test homework',
+                due_date: new Date(Date.now() + Math.random() * 7 * 86400000).toISOString()
+            };
+            
+            log('Adding new homework...', 'info');
+            
+            try {
+                const response = await fetch('/api/v1/homework', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newHomework)
+                });
+                const result = await response.json();
+                
+                log(`Added homework with ID: ${result.id}`, 'success');
+                loadHomework(); // Refresh the list
+            } catch (error) {
+                log(`Failed to add homework: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize
+        renderApiTests();
+        log('UI/UX Test Environment ready!', 'success');
+        
+        // Log some helpful info
+        console.log('%c🧪 EduSync UI/UX Test Environment', 'font-size: 20px; font-weight: bold; color: #667eea;');
+        console.log('%cAvailable commands:', 'font-weight: bold;');
+        console.log('  mockDB    - Access mock database');
+        console.log('  mockAPI   - Access mock API handlers');
+        console.log('  loadHomework()  - Load homework data');
+        console.log('  loadStats()     - Load statistics');
+        console.log('  simulateAdd()   - Add random homework');
+    </script>
+</body>
+</html>
