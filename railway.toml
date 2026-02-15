@@ -12,3 +12,4 @@ healthcheckTimeout = 60
 
 [deploy.env]
 PYTHONUNBUFFERED = "1"
+PYTHONDONTWRITEBYTECODE = "1"  # Prevent .pyc cache issues
