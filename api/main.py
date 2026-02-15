@@ -1,8 +1,9 @@
-"""EduSync API main application for Railway deployment."""
+"""EduSync API main application for Railway deployment with Telegram Bot."""
 
 import os
 import sys
 import logging
+import asyncio
 from contextlib import asynccontextmanager
 
 # Setup logging
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Global state
 db_status = "not_initialized"
 app_started = False
+bot_application = None  # Telegram bot application
 
 
 try:
@@ -27,10 +29,35 @@ except ImportError as e:
     raise
 
 
+async def init_telegram_bot():
+    """Initialize Telegram bot application."""
+    global bot_application
+    
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    if not token:
+        logger.warning("⚠️ TELEGRAM_BOT_TOKEN not set - bot disabled")
+        return None
+    
+    try:
+        from telegram.ext import Application
+        from bot.config import BotConfig
+        from bot.main import EduSyncBot
+        
+        config = BotConfig.from_env()
+        bot = EduSyncBot(config)
+        bot.setup()
+        
+        logger.info("✅ Telegram bot initialized")
+        return bot.application
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize bot: {e}")
+        return None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
-    global db_status, app_started
+    global db_status, app_started, bot_application
     
     logger.info("🚀 EduSync API starting up...")
     
@@ -45,11 +72,15 @@ async def lifespan(app: FastAPI):
         db_status = f"error: {str(e)[:80]}"
         logger.error(f"❌ Database init failed: {e}")
     
+    # Initialize Telegram bot
+    bot_application = await init_telegram_bot()
+    
     app_started = True
     logger.info("✅ Application startup complete")
     
     yield
     
+    # Shutdown
     logger.info("🛑 Application shutting down...")
 
 
@@ -78,14 +109,11 @@ app.add_middleware(
 def find_static_dir():
     """Find static directory in various locations."""
     possible_paths = [
-        # Railway deployment paths
         "/app/static",
         "/workspace/static", 
         "/static",
-        # Relative paths
         os.path.join(os.getcwd(), "static"),
         os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static"),
-        # Parent of current file
         os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "static"),
     ]
     
@@ -113,6 +141,7 @@ async def health_check():
         "status": "healthy",
         "version": "1.0.0",
         "database": db_status,
+        "bot": "initialized" if bot_application else "disabled",
         "started": app_started,
         "static_dir": STATIC_DIR
     }
@@ -146,23 +175,20 @@ async def test_ai():
             "configured": False
         }
     
-    # Try to use Gemini
     try:
         import google.generativeai as genai
         genai.configure(api_key=gemini_key)
         
-        # List available models
         models = genai.list_models()
         model_names = [m.name for m in models if 'generateContent' in m.supported_generation_methods]
         
-        # Try a simple test
         model = genai.GenerativeModel('gemini-2.0-flash')
         response = model.generate_content("Say 'EduSync API is working!'")
         
         return {
             "status": "success",
             "configured": True,
-            "available_models": model_names[:5],  # First 5 models
+            "available_models": model_names[:5],
             "test_response": response.text.strip() if response.text else "No response",
             "message": "Gemini API is working!"
         }
@@ -174,11 +200,59 @@ async def test_ai():
         }
 
 
+# ==========================================
+# TELEGRAM BOT WEBHOOK
+# ==========================================
+
 @app.post("/webhook/telegram")
 async def telegram_webhook(update: dict):
-    """Telegram webhook."""
-    logger.info(f"Telegram update: {update.get('update_id')}")
-    return {"ok": True}
+    """Telegram webhook - processes bot updates."""
+    global bot_application
+    
+    update_id = update.get('update_id', 'unknown')
+    logger.info(f"📨 Telegram update received: {update_id}")
+    
+    if not bot_application:
+        logger.error("❌ Bot application not initialized")
+        return {"ok": False, "error": "Bot not initialized"}
+    
+    try:
+        from telegram import Update
+        
+        # Create Update object from JSON
+        telegram_update = Update.de_json(update, bot_application.bot)
+        
+        # Process the update
+        await bot_application.process_update(telegram_update)
+        
+        logger.info(f"✅ Update {update_id} processed")
+        return {"ok": True}
+        
+    except Exception as e:
+        logger.error(f"❌ Error processing update {update_id}: {e}")
+        return {"ok": False, "error": str(e)}
+
+
+@app.get("/webhook/telegram")
+async def telegram_webhook_info():
+    """Get webhook info (for debugging)."""
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    if not token:
+        return {"error": "TELEGRAM_BOT_TOKEN not set"}
+    
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"https://api.telegram.org/bot{token}/getWebhookInfo")
+            return response.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.post("/api/v1/homework")
+async def create_homework(data: dict):
+    """Create homework."""
+    return {"id": f"hw-{os.urandom(4).hex()}", "created": True, "data": data}
 
 
 @app.get("/api/v1/homework")
@@ -191,12 +265,6 @@ async def list_homework():
         ],
         "database": db_status
     }
-
-
-@app.post("/api/v1/homework")
-async def create_homework(data: dict):
-    """Create homework."""
-    return {"id": f"hw-{os.urandom(4).hex()}", "created": True}
 
 
 # ==========================================
@@ -215,18 +283,17 @@ async def serve_index():
             except Exception as e:
                 logger.error(f"Error reading index.html: {e}")
     
-    # Fallback HTML
-    return """<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
     <html>
     <head><title>EduSync</title></head>
     <body>
         <h1>EduSync API</h1>
-        <p>Frontend not found. API is running.</p>
-        <p>Database: """ + db_status + """</p>
+        <p>Bot: {"Running" if bot_application else "Not configured"}</p>
+        <p>Database: {db_status}</p>
         <ul>
             <li><a href="/health">Health Check</a></li>
             <li><a href="/api">API Info</a></li>
-            <li><a href="/api/v1/homework">Homework API</a></li>
+            <li><a href="/webhook/telegram">Webhook Info</a></li>
         </ul>
     </body>
     </html>"""
@@ -244,17 +311,6 @@ async def serve_test_ui():
             except Exception as e:
                 logger.error(f"Error reading test-ui.html: {e}")
     return "<h1>Test UI not found</h1><a href='/'>Back to home</a>"
-
-
-@app.get("/js/{filename}")
-async def serve_js(filename: str):
-    """Serve JS files."""
-    if STATIC_DIR:
-        js_path = os.path.join(STATIC_DIR, "js", filename)
-        if os.path.exists(js_path):
-            with open(js_path, "r", encoding="utf-8") as f:
-                return HTMLResponse(content=f.read(), media_type="application/javascript")
-    return JSONResponse(status_code=404, content={"error": "Not found"})
 
 
 logger.info("✅ FastAPI app ready")
