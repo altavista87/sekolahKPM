@@ -36,14 +36,13 @@ def get_database_url() -> str:
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
     
-    # For asyncpg with Railway, we need ssl=true (not sslmode=require)
-    if "railway.app" in database_url:
-        if "?" in database_url:
-            database_url += "&ssl=true"
-        else:
-            database_url += "?ssl=true"
+    # Railway requires SSL - use sslmode=require for asyncpg
+    if "railway.app" in database_url and "sslmode" not in database_url:
+        separator = "&" if "?" in database_url else "?"
+        database_url += f"{separator}sslmode=require"
+        logger.info("Added sslmode=require for Railway PostgreSQL")
     
-    logger.info(f"Database URL (masked): {database_url[:40]}...")
+    logger.info(f"Database URL host: {database_url.split('@')[1].split('/')[0] if '@' in database_url else 'unknown'}")
     return database_url
 
 
