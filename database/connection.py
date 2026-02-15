@@ -4,49 +4,33 @@ import os
 import logging
 from typing import AsyncGenerator, Optional
 
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
+from sqlalchemy import text
+
 logger = logging.getLogger(__name__)
+
+# Base class for models
+Base = declarative_base()
 
 # Global engine (initialized lazily)
 _engine = None
 _AsyncSessionLocal = None
-Base = None
-
-
-def get_base():
-    """Get or import Base class."""
-    global Base
-    if Base is None:
-        from database.models import Base as ModelsBase
-        Base = ModelsBase
-    return Base
 
 
 def get_database_url() -> str:
-    """Get database URL with proper format."""
+    """Get database URL with proper format for asyncpg."""
     database_url = os.getenv("DATABASE_URL")
     
     if not database_url:
         logger.warning("DATABASE_URL not set, using SQLite fallback")
-        return "sqlite:///./edusync.db"
+        return "sqlite+aiosqlite:///./edusync.db"
     
-    logger.info(f"Original URL starts with: {database_url[:20]}...")
-    
-    # For Railway PostgreSQL with psycopg2
+    # Convert postgres:// to postgresql+asyncpg://
     if database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql://", 1)
-        logger.info("Converted postgres:// to postgresql://")
+        database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
     
-    # Add sslmode=require for Railway
-    if "railway.app" in database_url:
-        if "sslmode" not in database_url:
-            separator = "&" if "?" in database_url else "?"
-            database_url += f"{separator}sslmode=require"
-            logger.info(f"Added sslmode=require. New URL ends with: ...{database_url[-30:]}")
-        else:
-            logger.info("URL already has sslmode")
-    else:
-        logger.info(f"Not Railway DB: {database_url[:30]}...")
-    
+    logger.info(f"Database configured for host: {database_url.split('@')[1].split(':')[0] if '@' in database_url else 'unknown'}")
     return database_url
 
 
@@ -54,14 +38,22 @@ def get_engine():
     """Get or create engine (lazy initialization)."""
     global _engine
     if _engine is None:
-        from sqlalchemy import create_engine
+        url = get_database_url()
         
-        _engine = create_engine(
-            get_database_url(),
+        # SSL configuration for Railway PostgreSQL
+        connect_args = {}
+        if "railway.app" in url:
+            # Railway requires SSL
+            connect_args["ssl"] = "require"
+            logger.info("Configured SSL=require for Railway")
+        
+        _engine = create_async_engine(
+            url,
             echo=os.getenv("SQL_ECHO", "false").lower() == "true",
             pool_size=5,
             max_overflow=10,
             pool_pre_ping=True,
+            connect_args=connect_args,
         )
     return _engine
 
@@ -70,24 +62,24 @@ def get_session_maker():
     """Get or create session maker (lazy initialization)."""
     global _AsyncSessionLocal
     if _AsyncSessionLocal is None:
-        from sqlalchemy.orm import sessionmaker
-        _AsyncSessionLocal = sessionmaker(
+        _AsyncSessionLocal = async_sessionmaker(
             get_engine(),
+            class_=AsyncSession,
+            expire_on_commit=False,
             autocommit=False,
             autoflush=False,
         )
     return _AsyncSessionLocal
 
 
-def init_db():
+async def init_db() -> None:
     """Initialize database tables."""
     try:
         engine = get_engine()
-        with engine.begin() as conn:
+        async with engine.begin() as conn:
             try:
                 from database.models import User, Student, Homework, Reminder, Class
-                Base = get_base()
-                Base.metadata.create_all(conn)
+                await conn.run_sync(Base.metadata.create_all)
                 logger.info("✅ Database initialized successfully")
             except ImportError as e:
                 logger.warning(f"⚠️ Could not import models: {e}")
@@ -96,59 +88,42 @@ def init_db():
         raise
 
 
-def get_db():
-    """Get database session."""
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Get database session for dependency injection."""
     session_maker = get_session_maker()
-    session = session_maker()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+    async with session_maker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 
-def check_db_connection() -> bool:
+async def get_db_context() -> AsyncSession:
+    """Get database session as context manager."""
+    session_maker = get_session_maker()
+    return session_maker()
+
+
+async def check_db_connection() -> bool:
     """Check if database connection is working."""
     try:
-        from sqlalchemy import text
         engine = get_engine()
-        with engine.connect() as conn:
-            result = conn.execute(text("SELECT 1"))
+        async with engine.connect() as conn:
+            result = await conn.execute(text("SELECT 1"))
             return result.scalar() == 1
     except Exception as e:
         logger.error(f"❌ Database connection check failed: {e}")
         return False
 
 
-def close_db():
+async def close_db() -> None:
     """Close database connections."""
     global _engine
     if _engine:
-        _engine.dispose()
+        await _engine.dispose()
         _engine = None
         logger.info("Database connections closed")
-
-
-# Async wrappers for compatibility
-def get_db_context():
-    """Get database session context."""
-    return get_session_maker()()
-
-
-async def init_db_async():
-    """Async wrapper for init_db."""
-    init_db()
-
-
-async def check_db_connection_async() -> bool:
-    """Async wrapper for check_db_connection."""
-    return check_db_connection()
-
-
-async def get_db_async():
-    """Async wrapper for get_db."""
-    for session in get_db():
-        yield session
