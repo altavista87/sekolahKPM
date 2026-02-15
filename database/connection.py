@@ -76,15 +76,21 @@ async def init_db() -> None:
     """Initialize database tables."""
     try:
         engine = get_engine()
+        logger.info("Creating database tables...")
         async with engine.begin() as conn:
             try:
                 from database.models import User, Student, Homework, Reminder, Class
-                await conn.run_sync(Base.metadata.create_all)
+                # Use run_sync to create tables
+                def create_tables(sync_conn):
+                    Base.metadata.create_all(sync_conn)
+                await conn.run_sync(create_tables)
                 logger.info("✅ Database initialized successfully")
             except ImportError as e:
                 logger.warning(f"⚠️ Could not import models: {e}")
     except Exception as e:
         logger.error(f"❌ Failed to initialize database: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         raise
 
 
